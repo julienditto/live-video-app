@@ -1,0 +1,68 @@
+ssh -i ~/.ssh/gce-key jordanbradford366@34.102.67.160
+
+cd ~
+mkdir nginx-build
+cd nginx-build
+
+# Download NGINX source
+wget http://nginx.org/download/nginx-1.25.4.tar.gz
+tar -xzf nginx-1.25.4.tar.gz
+cd nginx-1.25.4
+
+# Clone the RTMP module
+git clone https://github.com/arut/nginx-rtmp-module.git
+
+# Configure with RTMP
+./configure \
+  --with-http_ssl_module \
+  --with-http_auth_request_module \
+  --add-module=./nginx-rtmp-module
+
+# Build and install
+make
+sudo make install
+
+
+ffmpeg -re -i ~/Desktop/video/bbb_sunflower_1080p_30fps_normal.mp4 \
+-c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 \
+-c:a aac -b:a 128k -ar 44100 -ac 2 \
+-f flv rtmp://34.102.67.160:1935/live/streamkey
+
+libcamera-vid -t 0 --inline --codec h264 -o - | \
+ffmpeg -re -f h264 -i - \
+-f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \
+-shortest \
+-c:v copy \
+-c:a aac -b:a 128k \
+-f flv rtmp://34.102.67.160:1935/live/streamkey
+
+ffmpeg -rtsp_transport tcp -i rtsp://<username>:<password>@<camera-ip>/stream-path \
+-f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \
+-shortest \
+-c:v copy \
+-c:a aac -b:a 128k \
+-f flv rtmp://34.102.67.160:1935/live/streamkey
+
+
+gunicorn -w 1 -b 127.0.0.1:8000 main:app --daemon
+
+sudo /usr/local/nginx/sbin/nginx -s reload 
+/usr/local/nginx/conf/nginx.conf
+
+/usr/local/nginx/logs/access.log
+
+/usr/local/nginx/logs/error.log
+
+/usr/local/nginx/ssl/
+
+Safari gave me a warning that the website has no certificate even though I generated it on my own and am serving over https.
+That’s totally normal behavior with self-signed certificates—browsers like Safari, Chrome, Firefox, etc., don’t trust them by default because they aren’t signed by a recognized Certificate Authority (CA).
+
+What is the most common trusted CA that I can get a certificate from
+The most common trusted Certificate Authority (CA) that you can get a free SSL/TLS certificate from is Let’s Encrypt.
+Its Free.
+
+nohup python3 stream_uploader.py > stream_upload.log 2>&1 &
+
+ps aux | grep stream_uploader.py
+
