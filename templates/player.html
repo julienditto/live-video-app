@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Stream with video.js</title>
+  <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
+  <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+</head>
+<body>
+  <h2>Welcome, User</h2>
+
+  <video
+    id="video"
+    class="video-js vjs-default-skin"
+    controls
+    autoplay
+    width="640"
+    height="360"
+  ></video>
+
+  <script>
+    const player = videojs('video', {
+      techOrder: ['html5'],
+      autoplay: true,
+      controls: true,
+      preload: 'auto',
+      fluid: false,
+    });
+
+    async function loadStream() {
+      try {
+        const response = await fetch('/api/get_signed_url');
+        if (!response.ok) {
+          console.error('Failed to fetch signed URL');
+          return;
+        }
+        const data = await response.json();
+        const signedUrl = data.signed_url;
+
+        player.pause();
+        player.reset();
+        player.src({
+          src: signedUrl,
+          type: 'application/vnd.apple.mpegurl',
+        });
+        player.play();
+      } catch (e) {
+        console.error('Error loading stream:', e);
+      }
+    }
+
+    loadStream();
+
+    setInterval(() => {
+      loadStream();
+    }, 9 * 60 * 1000);
+  </script>
+</body>
+</html>
