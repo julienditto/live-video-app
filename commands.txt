@@ -1,0 +1,73 @@
+Project Commands
+
+Project idea:
+How to slow down email send to one person at the door or one package at the door and not keep sending emails over and over. Still needs to be able to free up service to look for more labels.
+Need a way to generate and manage stream keys
+
+/usr/local/nginx/sbin/nginx
+
+ffmpeg -re -i ~/Desktop/myproject/videoplayback.mp4 \
+-c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 \
+-c:a aac -b:a 128k -ar 44100 -ac 2 \
+-f flv rtmp://127.0.0.1/live/streamkey
+
+ffprobe -i http://127.0.0.1:8080/hls/streamkey.m3u8
+
+
+ffmpeg -re -i ~/Desktop/myproject/videoplayback.mp4 \
+  -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 \
+  -an \
+  -f flv rtmp://127.0.0.1/live/streamkey
+
+docker run -it --rm \
+  -v /Users/julienditto/Desktop/myproject:/app \
+  my-streaming-api-image:latest
+
+gst-launch-1.0 -v souphttpsrc location=http://127.0.0.1:8080/hls/streamkey.m3u8 ! hlsdemux ! filesink location=/Users/julienditto/Desktop/myproject/my-hls-stream
+
+export GOOGLE_APPLICATION_CREDENTIALS=/app/thinking-device-459220-g8-571abef34197.json
+export CONFIG=/google/cpp/label.json \
+export PIPE_NAME=/app/my-hls-stream \
+export TIMEOUT=3600 \
+
+gst-launch-1.0 -v souphttpsrc location=http://host.docker.internal:8080/hls/streamkey.m3u8 ! hlsdemux ! filesink location=/google/pipe
+
+/google/cpp/streaming_client_main \
+  --alsologtostderr \
+  --endpoint "dns:///alpha-videointelligence.googleapis.com" \
+  --video_path=$PIPE_NAME \
+  --use_pipe=true \
+  --config=$CONFIG \
+  --timeout=$TIMEOUT
+
+docker run -it --rm \
+  -v /tmp:/tmp \
+  -v /Users/julienditto/Desktop/myproject:/app \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/app/thinking-device-459220-g8-571abef34197.json \
+  my-streaming-api-image:latest \
+  /google/cpp/streaming_client_main \
+    --alsologtostderr \
+    --endpoint "dns:///alpha-videointelligence.googleapis.com" \
+    --video_path=/app/my-hls-pipe \
+    --use_pipe=true \
+    --config=/google/cpp/label.json
+    --timeout=3600
+
+ffmpeg -re -i /app/videoplayback.mp4 \
+  -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 50 \
+  -an \
+  -f mpegts /app/my-hls-stream
+
+export GOOGLE_APPLICATION_CREDENTIALS=/app/thinking-device-459220-g8-571abef34197.json
+export CONFIG=/google/cpp/label.json \
+export PIPE_NAME=/google/pipe \
+export TIMEOUT=3600 \
+
+gst-launch-1.0 -v rtmpsrc location=rtmp://host.docker.internal:1935/live/streamkey ! flvdemux ! filesink location=$PIPE_NAME
+
+gst-launch-1.0 -v rtmpsrc location=rtmp://127.0.0.1:1935/live/streamkey ! flvdemux ! filesink location=/Users/julienditto/Desktop/demo/pipe  http://127.0.0.1:8080/hls/streamkey.m3u8
+
+export GOOGLE_APPLICATION_CREDENTIALS=/Users/julienditto/Desktop/demo/thinking-device-459220-g8-571abef34197.json 
+gst-launch-1.0 -v souphttpsrc location=http://127.0.0.1:8080/hls/streamkey.m3u8 ! hlsdemux ! filesink location=/Users/julienditto/Desktop/demo/pipe
+
+ffmpeg -re -i /Users/julienditto/Desktop/myproject/videoplayback.mp4   -c:v libx264 -preset veryfast -an -f mpegts -   | tee /Users/julienditto/Desktop/demo/pipe > /dev/null
